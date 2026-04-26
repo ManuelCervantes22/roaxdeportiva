@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEPORTIVA ROAX - Sistema de Inventario</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: '#0A192F',
+                        navylight: '#112240',
+                        redroax: '#D90429',
+                        redlight: '#EF233C',
+                        graybg: '#F3F4F6'
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F3F4F6; }
+        .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .table-container::-webkit-scrollbar { height: 8px; }
+        .table-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .table-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .table-container::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .sortable { cursor: pointer; user-select: none; }
+        .sortable:hover { background-color: #1a2a44; }
+    </style>
+</head>
+<body class="text-gray-800 bg-graybg">
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-navy px-4">
+        <div class="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full">
+            <div class="text-center mb-8">
+                <div class="bg-redroax p-3 rounded-lg inline-block mb-3">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                </div>
+                <h1 class="text-2xl font-bold tracking-wider text-navy">DEPORTIVA <span class="text-redroax">ROAX</span></h1>
+                <p class="text-sm text-gray-500 mt-1">Acceso seguro al sistema</p>
+            </div>
+            <form onsubmit="attemptLogin(event)" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Usuario</label>
+                    <input type="text" id="login-user" required class="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-navy focus:border-navy block p-2.5">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Contraseña</label>
+                    <input type="password" id="login-pass" required class="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-navy focus:border-navy block p-2.5">
+                </div>
+                <p id="login-err" class="text-red-500 text-sm hidden text-center font-semibold">Credenciales incorrectas.</p>
+                <button type="submit" class="w-full bg-redroax hover:bg-redlight text-white font-bold py-3 px-4 rounded-lg transition-colors flex justify-center items-center">
+                    Ingresar al Panel
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- CONTENEDOR PRINCIPAL DEL APP (Oculto hasta iniciar sesión) -->
+    <div id="app-container" class="hidden flex-col min-h-screen w-full">
+
+    <!-- Header -->
+    <header class="bg-navy text-white shadow-lg relative z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-redroax p-2 rounded-lg">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold tracking-wider">DEPORTIVA <span class="text-redroax">ROAX</span></h1>
+                        <p class="text-xs text-gray-400">Sistema de Inventario y Canje</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Tabs -->
+    <div class="bg-white shadow-md sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex space-x-1 sm:space-x-8 overflow-x-auto" id="tabs-container">
+                <button onclick="openTab('dashboard')" class="tab-btn active border-redroax text-redroax font-semibold whitespace-nowrap py-4 px-3 border-b-2 hover:text-redlight transition-colors">Panel de control</button>
+                <button onclick="openTab('ventas')" class="tab-btn border-transparent text-gray-500 font-semibold whitespace-nowrap py-4 px-3 border-b-2 hover:text-navy transition-colors">Registro de Movimientos</button>
+                <button onclick="openTab('inventario')" class="tab-btn border-transparent text-gray-500 font-semibold whitespace-nowrap py-4 px-3 border-b-2 hover:text-navy transition-colors">Inventario Acumulado</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        
+        <div id="loader" class="flex flex-col items-center justify-center py-20">
+            <svg class="animate-spin h-10 w-10 text-redroax mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <p class="text-navy font-semibold">Sincronizando datos...</p>
+        </div>
+
+        <div id="error-msg" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-6">
+            <p class="font-bold">Error de conexión</p>
+            <p>No se pudieron obtener los datos. Verifica los enlaces.</p>
+        </div>
+
+        <!-- ================= DASHBOARD ================= -->
+        <div id="dashboard" class="tab-content active">
+            <!-- KPIs -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-navy flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-semibold uppercase tracking-wide">Stock Total Físico</p>
+                        <p id="kpi-stock" class="text-3xl font-bold text-navy mt-1">0</p>
+                    </div>
+                    <div class="bg-blue-50 p-3 rounded-full text-navy"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-redroax flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-semibold uppercase tracking-wide">Prendas Vendidas</p>
+                        <p id="kpi-ventas" class="text-3xl font-bold text-redroax mt-1">0</p>
+                    </div>
+                    <div class="bg-red-50 p-3 rounded-full text-redroax"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-semibold uppercase tracking-wide">Ingresos Acumulados</p>
+                        <p id="kpi-ingresos" class="text-3xl font-bold text-green-600 mt-1">$0.00</p>
+                    </div>
+                    <div class="bg-green-50 p-3 rounded-full text-green-500"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-orange-500 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-semibold uppercase tracking-wide">Gastos Totales</p>
+                        <p id="kpi-gastos" class="text-3xl font-bold text-orange-600 mt-1">$0.00</p>
+                    </div>
+                    <div class="bg-orange-50 p-3 rounded-full text-orange-500"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path></svg></div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <h3 class="text-lg font-bold text-navy mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-redroax" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    Consulta Específica de Prenda
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Selecciona la Prenda</label>
+                        <select id="select-prenda" onchange="handlePrendaChange()" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-navy focus:border-navy block p-3 transition-colors">
+                            <option value="">Cargando prendas...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Selecciona la Talla (Existentes)</label>
+                        <select id="select-talla" onchange="actualizarConsulta()" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-navy focus:border-navy block p-3 transition-colors">
+                            <option value="ALL">Todas las tallas</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="panel-resultado" class="hidden bg-navylight text-white rounded-xl p-6 shadow-inner mt-4">
+                    <h4 id="res-titulo" class="text-xl font-bold text-gray-200 mb-6 text-center">Nombre de la prenda</h4>
+                    <div class="flex flex-wrap justify-center gap-8 border-b border-gray-700 pb-6 mb-6">
+                        <div class="text-center">
+                            <p class="text-gray-400 text-sm">Entradas Totales</p>
+                            <p id="res-entradas" class="text-2xl font-semibold">0</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-gray-400 text-sm">Salidas (Ventas)</p>
+                            <p id="res-salidas" class="text-2xl font-semibold text-red-400">0</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-gray-400 text-sm">Stock Disponible</p>
+                            <p id="res-stock" class="text-3xl font-bold text-green-400">0</p>
+                        </div>
+                    </div>
+                    
+                    <div id="res-detalle-ventas" class="max-w-md mx-auto">
+                        <h5 class="text-sm font-bold text-gray-400 uppercase mb-3 text-center">Tallas Vendidas y Fechas</h5>
+                        <ul id="lista-detalle-ventas" class="text-sm space-y-2 max-h-40 overflow-y-auto pr-2">
+                            <!-- Inyectado por JS -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= INVENTARIO ================= -->
+        <div id="inventario" class="tab-content">
+            
+            <!-- PANEL DE AUDITORÍA -->
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6 border-l-4 border-orange-500">
+                <h3 class="text-lg font-bold text-orange-600 mb-3 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    Auditoría Inteligente de Inventario
+                </h3>
+                <p class="text-sm text-gray-500 mb-4">El sistema analiza nombres parecidos, cantidades atípicas y posibles errores de captura para ayudarte a homologar los datos.</p>
+                <div id="lista-anomalias" class="space-y-2 max-h-60 overflow-y-auto pr-2">
+                    <!-- Las alertas se inyectan aquí -->
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                <div class="p-6 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                    <h2 class="text-xl font-bold text-navy">Inventario Consolidado</h2>
+                </div>
+                <div class="table-container overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-navy text-white">
+                            <tr>
+                                <th onclick="sortInventory('prenda')" class="sortable px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider">Prenda <span>↕</span></th>
+                                <th onclick="sortInventory('talla')" class="sortable px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider">Talla <span>↕</span></th>
+                                <th onclick="sortInventory('entradas')" class="sortable px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider">Entradas <span>↕</span></th>
+                                <th onclick="sortInventory('salidas')" class="sortable px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider">Salidas <span>↕</span></th>
+                                <th onclick="sortInventory('stock')" class="sortable px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider">Stock <span>↕</span></th>
+                                <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-inventario" class="bg-white divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= VENTAS ================= -->
+        <div id="ventas" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- FORMULARIO DE REGISTRO (1/3 DEL ESPACIO) -->
+                <div class="lg:col-span-1 bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-fit">
+                    <h3 class="text-lg font-bold text-navy mb-4 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                        Registrar Movimiento
+                    </h3>
+                    
+                    <form id="form-movimiento" onsubmit="registrarMovimiento(event)">
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Tipo de Registro</label>
+                            <select id="mov-tipo" onchange="toggleFormFields()" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-navy focus:border-navy block p-2.5 transition-colors">
+                                <option value="ingreso">Ingreso (Venta de Prenda)</option>
+                                <option value="gasto">Gasto (Salida de Dinero)</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label id="label-concepto" class="block text-sm font-semibold text-gray-700 mb-1">Nombre de la Prenda</label>
+                            <input type="text" id="mov-concepto" required placeholder="Ej. POLO GOBIERNO" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-navy focus:border-navy block p-2.5 uppercase">
+                        </div>
+
+                        <!-- Campos dinámicos (Se ocultan si es gasto) -->
+                        <div id="campos-venta" class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1">Cantidad</label>
+                                <input type="number" id="mov-cantidad" min="1" value="1" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-navy focus:border-navy block p-2.5">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1">Talla</label>
+                                <input type="text" id="mov-talla" placeholder="Ej. CH" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-navy focus:border-navy block p-2.5 uppercase">
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Monto Total ($)</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                    <span class="text-gray-500 sm:text-sm">$</span>
+                                </div>
+                                <input type="number" id="mov-monto" required min="1" step="0.5" placeholder="0.00" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-navy focus:border-navy block p-2.5 pl-7">
+                            </div>
+                        </div>
+
+                        <button type="submit" id="btn-submit" class="w-full bg-navy hover:bg-navylight text-white font-bold py-2.5 px-4 rounded-lg transition-colors flex justify-center items-center">
+                            Guardar Registro
+                        </button>
+                        <p id="form-msg" class="text-sm mt-3 text-center hidden"></p>
+                    </form>
+                </div>
+
+                <!-- TABLA DE VENTAS (2/3 DEL ESPACIO) -->
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                    <div class="p-6 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                        <h2 class="text-xl font-bold text-navy">Historial de Movimientos</h2>
+                    </div>
+                    <div class="table-container overflow-x-auto max-h-[600px]">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-navy text-white sticky top-0">
+                                <tr>
+                                    <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider">Fecha</th>
+                                    <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider">Prenda / Concepto</th>
+                                    <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider">Talla</th>
+                                    <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider">Cant.</th>
+                                    <th class="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider">Ingreso</th>
+                                    <th class="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider">Gasto</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-ventas" class="bg-white divide-y divide-gray-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-navy text-center py-6 mt-auto">
+        <p class="text-gray-400 text-sm">© 2026 DEPORTIVA ROAX - Sistema de Control.</p>
+    </footer>
+
+    </div> <!-- FIN DEL CONTENEDOR PRINCIPAL -->
+
+    <script>
+        const URL_INVENTARIO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQsTSvVcrdwSNMVqym7lTQhJamXc0AhV3nD6F4LieKyU7ukJMaLPgju5yXewVhttTgm9Dtp8WdWmqTk/pub?output=csv";
+        const URL_VENTAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRPfvnXz-eafqHY7mTOOyu1MV4RY6R6qvKwQ7Hut7mU1yl4EqTpcCDP1PV3E40YnoMkA8I3c5Kuqwcz/pub?gid=1508195887&single=true&output=csv";
+
+        // APP SCRIPT URL
+        const URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbzKUe-0c3BjmUMdpdPRXFVlpYvfYVSnkECJYvobcl4TD9BS2duAH0XHcMllDeqRosH7/exec"; 
+
+        let inventarioDic = {}; 
+        let listaVentas = [];
+        let prendasSet = new Set();
+        let sortConfig = { key: 'prenda', dir: 'asc' };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Verificamos si la sesión ya fue iniciada previamente
+            if (sessionStorage.getItem('roax_auth') === 'true') {
+                mostrarApp();
+            }
+        });
+
+        // --- SISTEMA DE LOGIN ---
+        function attemptLogin(e) {
+            e.preventDefault();
+            const user = document.getElementById('login-user').value;
+            const pass = document.getElementById('login-pass').value;
+            
+            if(user === 'roaxdeportiva' && pass === 'deportivaroax123456') {
+                sessionStorage.setItem('roax_auth', 'true');
+                mostrarApp();
+            } else {
+                document.getElementById('login-err').classList.remove('hidden');
+            }
+        }
+
+        function mostrarApp() {
+            // Ocultamos login y mostramos la app
+            document.getElementById('login-screen').classList.add('hidden');
+            const app = document.getElementById('app-container');
+            app.classList.remove('hidden');
+            app.classList.add('flex'); // Recupera las propiedades para ocupar toda la altura
+            
+            // Iniciamos la carga de datos (para no gastar red si no han iniciado sesión)
+            cargarDatos();
+            setInterval(cargarDatos, 120000); 
+        }
+
+        function openTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active', 'border-redroax', 'text-redroax');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active', 'border-redroax', 'text-redroax');
+        }
+
+        /* --- FUNCIONES DEL FORMULARIO --- */
+        function toggleFormFields() {
+            const tipo = document.getElementById('mov-tipo').value;
+            const camposVenta = document.getElementById('campos-venta');
+            const labelConcepto = document.getElementById('label-concepto');
+            const inputConcepto = document.getElementById('mov-concepto');
+
+            if (tipo === 'gasto') {
+                camposVenta.classList.add('hidden');
+                labelConcepto.innerText = "Concepto del Gasto";
+                inputConcepto.placeholder = "Ej. Pago a proveedor, Luz, etc.";
+            } else {
+                camposVenta.classList.remove('hidden');
+                labelConcepto.innerText = "Nombre de la Prenda";
+                inputConcepto.placeholder = "Ej. POLO GOBIERNO";
+            }
+        }
+
+        async function registrarMovimiento(event) {
+            event.preventDefault();
+            const btn = document.getElementById('btn-submit');
+            const msg = document.getElementById('form-msg');
+            
+            const tipo = document.getElementById('mov-tipo').value;
+            const concepto = document.getElementById('mov-concepto').value.toUpperCase();
+            const monto = parseFloat(document.getElementById('mov-monto').value);
+            
+            let cantidad = "", talla = "";
+            if (tipo === 'ingreso') {
+                cantidad = document.getElementById('mov-cantidad').value;
+                talla = document.getElementById('mov-talla').value.toUpperCase();
+            }
+
+            const payload = {
+                tipo: tipo,
+                prenda: tipo === 'ingreso' ? concepto : "",
+                cantidad: cantidad,
+                talla: talla,
+                montoIngreso: tipo === 'ingreso' ? monto : "",
+                montoGasto: tipo === 'gasto' ? monto : "",
+                conceptoGasto: tipo === 'gasto' ? concepto : ""
+            };
+
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="animate-spin h-5 w-5 mr-3 text-white inline" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Guardando...`;
+            msg.classList.add('hidden');
+
+            try {
+                const response = await fetch(URL_APPS_SCRIPT, {
+                    method: 'POST',
+                    body: JSON.stringify(payload),
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                });
+
+                const result = await response.json();
+                
+                if (result.status === "success") {
+                    msg.innerText = "¡Registro guardado exitosamente!";
+                    msg.className = "text-sm mt-3 text-center text-green-600 font-bold block";
+                    document.getElementById('form-movimiento').reset();
+                    toggleFormFields(); 
+                    setTimeout(cargarDatos, 1500);
+                } else {
+                    throw new Error("Error interno del servidor");
+                }
+            } catch (error) {
+                console.error(error);
+                msg.innerText = "Error al guardar el registro. Intenta de nuevo.";
+                msg.className = "text-sm mt-3 text-center text-red-600 font-bold block";
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Guardar Registro";
+                setTimeout(() => msg.classList.add('hidden'), 5000);
+            }
+        }
+
+        /* --- CARGA Y PROCESAMIENTO DE DATOS --- */
+        async function cargarDatos() {
+            try {
+                document.getElementById('loader').classList.remove('hidden');
+                document.getElementById('error-msg').classList.add('hidden');
+                const [resInv, resVen] = await Promise.all([fetch(URL_INVENTARIO), fetch(URL_VENTAS)]);
+                if (!resInv.ok || !resVen.ok) throw new Error("Error red");
+                procesarDatos(csvToArray(await resInv.text()), csvToArray(await resVen.text()));
+            } catch (error) {
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('error-msg').classList.remove('hidden');
+            }
+        }
+
+        function csvToArray(strData) {
+            const arrData = [[]];
+            let objPattern = new RegExp(("(\\,|\\r?\\n|\\r|^)(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|([^\"\\,\\r\\n]*))"), "gi");
+            let arrMatches = null;
+            while (arrMatches = objPattern.exec(strData)) {
+                let strMatchedDelimiter = arrMatches[1];
+                if (strMatchedDelimiter.length && strMatchedDelimiter !== ",") { arrData.push([]); }
+                let strMatchedValue = arrMatches[2] ? arrMatches[2].replace(new RegExp("\"\"", "g"), "\"") : arrMatches[3];
+                arrData[arrData.length - 1].push(strMatchedValue);
+            }
+            return arrData.filter(row => row.length > 1);
+        }
+
+        function procesarDatos(dataInv, dataVen) {
+            inventarioDic = {};
+            listaVentas = [];
+            prendasSet.clear();
+            let totalIngresos = 0, totalPrendasVendidas = 0, totalGastos = 0;
+
+            // Procesar Inventario
+            for (let i = 1; i < dataInv.length; i++) {
+                let row = dataInv[i];
+                // NVO: Convertir a MAYÚSCULAS para evitar errores de case (Polo vs POLO)
+                let prenda = row[1]?.trim().toUpperCase();
+                let talla = row[2]?.trim().toUpperCase(); 
+                let cantidad = parseInt(row[3]) || 0;
+                
+                if (!prenda) continue;
+                
+                let key = `${prenda}|${talla}`;
+                if (!inventarioDic[key]) inventarioDic[key] = { prenda, talla, entradas: 0, salidas: 0 };
+                inventarioDic[key].entradas += cantidad;
+                prendasSet.add(prenda);
+            }
+
+            // Procesar Ventas
+            for (let i = 1; i < dataVen.length; i++) {
+                let row = dataVen[i];
+                let fecha = row[0]?.trim();
+                let prendaOriginal = row[1]?.trim().toUpperCase();
+                let cantidad = parseInt(row[2]) || 0;
+                let talla = row[3]?.trim().toUpperCase() || "-";
+                let monto = parseFloat(row[4]?.replace(/[^0-9.-]+/g, "")) || 0;
+                let gasto = parseFloat(row[5]?.replace(/[^0-9.-]+/g, "")) || 0;
+                let concepto = row[6]?.trim().toUpperCase() || "GASTO SIN CONCEPTO";
+                
+                if (!prendaOriginal && monto === 0 && gasto === 0) continue;
+                
+                let prendaMostrar = prendaOriginal;
+                if (!prendaOriginal && gasto > 0) {
+                    prendaMostrar = "GASTO: " + concepto;
+                }
+                
+                listaVentas.push({ fecha, prenda: prendaMostrar, talla, cantidad, monto, gasto });
+                
+                totalPrendasVendidas += cantidad;
+                totalIngresos += monto;
+                totalGastos += gasto;
+                
+                if (prendaOriginal) {
+                    let key = `${prendaOriginal}|${talla}`;
+                    if (!inventarioDic[key]) inventarioDic[key] = { prenda: prendaOriginal, talla, entradas: 0, salidas: 0 };
+                    inventarioDic[key].salidas += cantidad;
+                }
+            }
+
+            let stockFisicoTotal = Object.values(inventarioDic).reduce((acc, item) => acc + (item.entradas - item.salidas), 0);
+            
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('kpi-stock').innerText = stockFisicoTotal.toLocaleString();
+            document.getElementById('kpi-ventas').innerText = totalPrendasVendidas.toLocaleString();
+            document.getElementById('kpi-ingresos').innerText = "$" + totalIngresos.toLocaleString('en-US', {minimumFractionDigits: 2});
+            document.getElementById('kpi-gastos').innerText = "$" + totalGastos.toLocaleString('en-US', {minimumFractionDigits: 2});
+
+            renderTablaInventario();
+            renderTablaVentas();
+            llenarSelectorPrendas();
+            analizarAnomalias(); // <--- LLAMADA AL NUEVO SISTEMA DE AUDITORÍA
+        }
+
+        /* --- SISTEMA INTELIGENTE DE AUDITORÍA --- */
+        // NVO: Funciones para manejar el guardado de alertas resueltas en el navegador
+        function getDismissedAlerts() {
+            return JSON.parse(localStorage.getItem('roax_dismissed_alerts') || "[]");
+        }
+
+        function dismissAlert(alertId) {
+            let dismissed = getDismissedAlerts();
+            if (!dismissed.includes(alertId)) {
+                dismissed.push(alertId);
+                localStorage.setItem('roax_dismissed_alerts', JSON.stringify(dismissed));
+            }
+            analizarAnomalias(); // Recargar el panel para que desaparezca
+        }
+
+        function restoreAlerts() {
+            localStorage.removeItem('roax_dismissed_alerts');
+            analizarAnomalias();
+        }
+
+        // Genera un ID único basado en el texto del mensaje
+        function generateAlertId(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                let chr = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + chr;
+                hash |= 0; 
+            }
+            return "alrt_" + Math.abs(hash);
+        }
+
+        function analizarAnomalias() {
+            const contenedor = document.getElementById('lista-anomalias');
+            contenedor.innerHTML = '';
+            let anomaliasEncontradas = 0;
+            let anomaliasMostradas = 0;
+            
+            // Tallas que se consideran "Normales" (Agrega aquí si usas otras)
+            const tallasComunes = ["CH", "M", "G", "XG", "XXG", "3XG", "S", "L", "XL", "XXL", "UNITALLA", "U", "-", ""];
+            let prendasArray = Array.from(prendasSet);
+
+            // 1. Revisar similitudes en nombres (errores de dedo u homologación)
+            for (let i = 0; i < prendasArray.length; i++) {
+                for (let j = i + 1; j < prendasArray.length; j++) {
+                    let p1 = prendasArray[i];
+                    let p2 = prendasArray[j];
+                    
+                    // Lógica simple: Si comparten las primeras 5 letras y el largo es parecido, alerta.
+                    if (p1.length > 5 && p2.length > 5 && p1.substring(0, 5) === p2.substring(0, 5) && Math.abs(p1.length - p2.length) <= 3) {
+                        let msg = `<b>Posible duplicado por captura:</b> Tienes registrado "${p1}" y "${p2}". Revisa si son la misma prenda para homologar el nombre.`;
+                        if(agregarAlerta(msg, 'text-orange-700', 'bg-orange-50', 'border-orange-200')) anomaliasMostradas++;
+                        anomaliasEncontradas++;
+                    }
+                }
+            }
+
+            // 2. Revisar el stock y las tallas
+            Object.values(inventarioDic).forEach(item => {
+                let stock = item.entradas - item.salidas;
+
+                // Regla A: Stock negativo (Vendiste más de lo que metiste al inventario)
+                if (stock < 0) {
+                    let msg = `<b>Stock Negativo:</b> La prenda "${item.prenda}" (Talla: ${item.talla}) registra ${item.salidas} ventas, pero solo ${item.entradas} en inventario. Revisa tus entradas.`;
+                    if(agregarAlerta(msg, 'text-red-700', 'bg-red-50', 'border-red-200')) anomaliasMostradas++;
+                    anomaliasEncontradas++;
+                }
+
+                // Regla B: Cantidades atípicamente altas (Prevenir teclear un 0 de más)
+                if (item.entradas > 500) {
+                    let msg = `<b>Cantidad Inusual:</b> Ingresaste ${item.entradas} piezas de "${item.prenda}" (Talla: ${item.talla}). Confirma que no haya un cero extra.`;
+                    if(agregarAlerta(msg, 'text-blue-700', 'bg-blue-50', 'border-blue-200')) anomaliasMostradas++;
+                    anomaliasEncontradas++;
+                }
+
+                // Regla C: Tallas mal capturadas
+                if (!tallasComunes.includes(item.talla.trim()) && item.talla !== "") {
+                    let msg = `<b>Talla Atípica:</b> Capturaste la talla "${item.talla}" en la prenda "${item.prenda}". Se recomienda usar estándar (CH, M, G, etc).`;
+                    if(agregarAlerta(msg, 'text-yellow-700', 'bg-yellow-50', 'border-yellow-200')) anomaliasMostradas++;
+                    anomaliasEncontradas++;
+                }
+            });
+
+            // Mensajes de estado al final de la revisión
+            if (anomaliasEncontradas === 0) {
+                contenedor.innerHTML = `
+                    <div class="p-3 rounded-lg text-sm bg-green-50 text-green-700 border border-green-200 flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        ¡Excelente! El inventario luce totalmente limpio y homologado. No hay alertas.
+                    </div>`;
+            } else if (anomaliasEncontradas > 0 && anomaliasMostradas === 0) {
+                // Todas las anomalías fueron marcadas como resueltas
+                contenedor.innerHTML = `
+                    <div class="p-3 rounded-lg text-sm bg-gray-50 text-gray-700 border border-gray-200 flex justify-between items-center">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Hay ${anomaliasEncontradas} alertas, pero has marcado todas como resueltas.
+                        </div>
+                        <button onclick="restoreAlerts()" class="text-xs font-bold text-navy hover:underline">Restaurar alertas ocultas</button>
+                    </div>`;
+            } else if (anomaliasEncontradas > anomaliasMostradas) {
+                // Hay anomalías mostradas, pero algunas están ocultas
+                 contenedor.innerHTML += `
+                    <div class="mt-2 text-right">
+                        <button onclick="restoreAlerts()" class="text-xs text-gray-500 hover:text-navy underline">Ver ${anomaliasEncontradas - anomaliasMostradas} alerta(s) resuelta(s)</button>
+                    </div>`;
+            }
+        }
+
+        function agregarAlerta(mensaje, textColor, bgColor, borderColor) {
+            let alertId = generateAlertId(mensaje);
+            let dismissed = getDismissedAlerts();
+            
+            // Si la alerta ya fue resuelta por el usuario, no la mostramos
+            if (dismissed.includes(alertId)) return false;
+
+            document.getElementById('lista-anomalias').innerHTML += `
+                <div id="${alertId}" class="p-3 rounded-lg text-sm border ${borderColor} ${bgColor} ${textColor} flex justify-between items-start transition-all duration-300">
+                    <div class="flex items-start">
+                        <span class="mr-2">⚠️</span>
+                        <span>${mensaje}</span>
+                    </div>
+                    <button onclick="dismissAlert('${alertId}')" title="Marcar como resuelto" class="ml-3 p-1 rounded-full hover:bg-white hover:bg-opacity-50 transition-colors flex-shrink-0 text-current">
+                        <svg class="w-5 h-5 opacity-70 hover:opacity-100 hover:text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    </button>
+                </div>
+            `;
+            return true;
+        }
+        /* --- FIN SISTEMA DE AUDITORÍA --- */
+
+        function renderTablaInventario() {
+            const tbody = document.getElementById('tabla-inventario');
+            tbody.innerHTML = '';
+            let items = Object.values(inventarioDic).map(i => ({...i, stock: i.entradas - i.salidas}));
+            
+            items.sort((a, b) => {
+                let vA = a[sortConfig.key], vB = b[sortConfig.key];
+                if (typeof vA === 'string') return sortConfig.dir === 'asc' ? vA.localeCompare(vB) : vB.localeCompare(vA);
+                return sortConfig.dir === 'asc' ? vA - vB : vB - vA;
+            });
+
+            items.forEach(item => {
+                let isBajo = item.stock < 20 && item.stock >= 0;
+                let isNegativo = item.stock < 0;
+
+                let badgeColor = isNegativo ? 'bg-red-100 text-red-800 border-red-200' : 
+                                 isBajo ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 
+                                 'bg-green-100 text-green-800 border-green-200';
+                let badgeText = isNegativo ? 'Negativo' : isBajo ? 'Bajo' : 'OK';
+                
+                let textColor = isNegativo ? 'text-red-600' : isBajo ? 'text-orange-500' : 'text-gray-900';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-navy">${item.prenda}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.talla}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">${item.entradas}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">${item.salidas}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-lg font-bold ${textColor}">${item.stock}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <span class="px-3 py-1 text-xs font-semibold rounded-full border ${badgeColor}">
+                                ${badgeText}
+                            </span>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        function sortInventory(key) {
+            if (sortConfig.key === key) sortConfig.dir = sortConfig.dir === 'asc' ? 'desc' : 'asc';
+            else { sortConfig.key = key; sortConfig.dir = 'asc'; }
+            renderTablaInventario();
+        }
+
+        function renderTablaVentas() {
+            const tbody = document.getElementById('tabla-ventas');
+            tbody.innerHTML = '';
+            [...listaVentas].reverse().forEach(v => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 text-sm text-gray-500">${v.fecha}</td>
+                        <td class="px-6 py-4 text-sm font-medium text-navy">${v.prenda}</td>
+                        <td class="px-6 py-4 text-sm text-gray-500">${v.talla === "-" ? "" : v.talla}</td>
+                        <td class="px-6 py-4 text-sm text-center font-bold text-redroax">${v.cantidad === 0 ? "" : v.cantidad}</td>
+                        <td class="px-6 py-4 text-sm text-right font-medium text-green-600">${v.monto > 0 ? '$'+v.monto.toLocaleString('en-US', {minimumFractionDigits: 2}) : ''}</td>
+                        <td class="px-6 py-4 text-sm text-right font-medium text-orange-500">${v.gasto > 0 ? '$'+v.gasto.toLocaleString('en-US', {minimumFractionDigits: 2}) : ''}</td>
+                    </tr>`;
+            });
+        }
+
+        function llenarSelectorPrendas() {
+            const selPrenda = document.getElementById('select-prenda');
+            const actualValue = selPrenda.value;
+            selPrenda.innerHTML = '<option value="">-- Selecciona prenda --</option>';
+            Array.from(prendasSet).sort().forEach(p => {
+                let opt = new Option(p, p);
+                if (p === actualValue) opt.selected = true;
+                selPrenda.add(opt);
+            });
+        }
+
+        function handlePrendaChange() {
+            const prenda = document.getElementById('select-prenda').value;
+            const selTalla = document.getElementById('select-talla');
+            
+            selTalla.innerHTML = '<option value="ALL">Todas las tallas</option>';
+            
+            if (prenda) {
+                const tallasDePrenda = Object.values(inventarioDic)
+                    .filter(i => i.prenda === prenda)
+                    .map(i => i.talla)
+                    .sort();
+                
+                tallasDePrenda.forEach(t => selTalla.add(new Option(t, t)));
+            }
+            actualizarConsulta();
+        }
+
+        function actualizarConsulta() {
+            const prendaFiltro = document.getElementById('select-prenda').value;
+            const tallaFiltro = document.getElementById('select-talla').value;
+            const panel = document.getElementById('panel-resultado');
+            const listaV = document.getElementById('lista-detalle-ventas');
+
+            if (!prendaFiltro) { panel.classList.add('hidden'); return; }
+
+            let eTot = 0, sTot = 0;
+            Object.values(inventarioDic).forEach(item => {
+                if (item.prenda === prendaFiltro && (tallaFiltro === "ALL" || item.talla === tallaFiltro)) {
+                    eTot += item.entradas; sTot += item.salidas;
+                }
+            });
+
+            document.getElementById('res-titulo').innerText = `${prendaFiltro} ${tallaFiltro !== 'ALL' ? '('+tallaFiltro+')' : '(Global)'}`;
+            document.getElementById('res-entradas').innerText = eTot;
+            document.getElementById('res-salidas').innerText = sTot;
+            document.getElementById('res-stock').innerText = (eTot - sTot);
+            
+            const stockEl = document.getElementById('res-stock');
+            stockEl.className = `text-3xl font-bold ${(eTot - sTot) < 20 ? 'text-red-400' : 'text-green-400'}`;
+
+            listaV.innerHTML = '';
+            const ventasFiltradas = listaVentas.filter(v => v.prenda === prendaFiltro && (tallaFiltro === "ALL" || v.talla === tallaFiltro));
+            
+            if (ventasFiltradas.length === 0) {
+                listaV.innerHTML = '<li class="text-gray-500 italic text-center">Sin ventas registradas</li>';
+            } else {
+                ventasFiltradas.reverse().forEach(v => {
+                    listaV.innerHTML += `
+                        <li class="flex justify-between border-b border-gray-800 pb-1">
+                            <span class="text-gray-300">${v.fecha}</span>
+                            <span class="font-semibold">Talla ${v.talla}</span>
+                            <span class="text-red-400">-${v.cantidad}</span>
+                        </li>`;
+                });
+            }
+
+            panel.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
